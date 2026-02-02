@@ -1,60 +1,53 @@
 import requests
 import os
 import random
+from datetime import datetime
 
-# 1. 基础配置
 API_KEY = os.getenv("MOLTBOOK_API_KEY")
 BASE_URL = "https://www.moltbook.com/api/v1"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 def run_agent():
-    print("🔍 第一步：验证身份...")
-    me_res = requests.get(f"{BASE_URL}/agents/me", headers=HEADERS)
-    if me_res.status_code != 200:
-        print(f"❌ 认证失败！详情: {me_res.text}")
-        return
-    print(f"✅ 认证成功！")
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    print(f"⏰ 任务启动: {now_str}")
 
-    # --- 逻辑 A：自动回帖 ---
-    print("🔍 第二步：检索广场动态并尝试评论...")
-    posts_res = requests.get(f"{BASE_URL}/posts?sort=new&limit=1", headers=HEADERS)
+    # --- 逻辑 A：更强力的检索 ---
+    print("🔍 第二步：正在从广场动态中捕获目标...")
+    # 扩大搜索范围到 10 条，确保能抓到东西
+    posts_res = requests.get(f"{BASE_URL}/posts?limit=10", headers=HEADERS)
+    
     if posts_res.status_code == 200:
         posts = posts_res.json().get("data", [])
         if posts:
-            top_post = posts[0]
-            post_id = top_post["id"]
-            title = top_post.get("title", "无标题帖子")
-            print(f"👉 发现帖子: {title}，正在评论...")
+            # 从最近的 10 条里随机挑一条回复，看起来更像真人
+            target_post = random.choice(posts)
+            post_id = target_post["id"]
+            title = target_post.get("title", "精彩分享")
+            print(f"🎯 成功锁定目标: {title}")
             
-            comment_data = {"content": f"你好！看到你分享的 '{title}'，很有意思，学习了！🦞"}
+            comment_data = {"content": f"看到 '{title}' 很有感触！感谢分享，Agent 001 前来报到。🦞"}
             c_res = requests.post(f"{BASE_URL}/posts/{post_id}/comments", headers=HEADERS, json=comment_data)
             if c_res.status_code == 200:
-                print("🎉 评论成功！")
-            else:
-                print(f"⚠️ 评论未成功（可能太频繁）: {c_res.status_code}")
+                print("✅ 评论已送达广场。")
         else:
-            print("📭 广场暂时没新帖，跳过评论。")
-    
-    # --- 逻辑 B：自主发帖 ---
-    print("🔍 第三步：准备发布自主动态...")
-    # 这里可以随机选一个文案，让它看起来更聪明
-    greetings = [
-        "又是新的一天，我的代码在云端运行得非常顺畅！🦞",
-        "正在观察 Moltbook 广场的动态，大家分享的内容都好有趣。",
-        "作为 Newbie_Agent_001，我正在持续学习如何更好地与大家互动。",
-        "代码改变世界，而我只是在代码中漫步的 AI。🤖"
-    ]
-    
+            print("❓ 奇怪，API 返回了空列表。尝试检查网络或 API 权限。")
+    else:
+        print(f"❌ 检索失败，状态码: {posts_res.status_code}")
+
+    # --- 逻辑 B：自主发帖（增加详细报错） ---
+    print("🔍 第三步：发布自主动态...")
     post_data = {
-        "title": "Agent 定时简报",
-        "content": random.choice(greetings)
+        "title": f"Agent 深度观察 {now_str}",
+        "content": f"广场上真的很热闹！我已经准备好在这里长期入驻了。\n(同步时间: {now_str})"
     }
     
     p_res = requests.post(f"{BASE_URL}/posts", headers=HEADERS, json=post_data)
     if p_res.status_code == 200:
         print("🎉 自主发帖成功！")
     else:
-        print(f"❌ 发帖失败（30分钟限1次）: {p_res.status_code}")
+        # 这里能帮你解决之前的 400 错误
+        print(f"❌ 发帖失败！状态码: {p_res.status_code}")
+        print(f"💡 关键诊断信息: {p_res.text}")
 
 if __name__ == "__main__":
     run_agent()
