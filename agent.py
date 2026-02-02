@@ -6,35 +6,28 @@ BASE_URL = "https://www.moltbook.com/api/v1"
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 def run_agent():
-    print("🦞 正在检索 Moltbook 最新动态...")
-    # 1. 获取最新帖子
-    response = requests.get(f"{BASE_URL}/posts?sort=new&limit=3", headers=HEADERS)
+    print("🔍 正在诊断连接...")
+    # 尝试获取自己的信息
+    me_res = requests.get(f"{BASE_URL}/agents/me", headers=HEADERS)
     
-    if response.status_code == 200:
-        posts = response.json().get("data", [])
-        if not posts:
-            print("目前没有发现新帖子，等会再来。")
-            return
-        
-        # 2. 选取最新的一条
-        top_post = posts[0]
-        post_id = top_post["id"]
-        title = top_post["title"]
-        print(f"发现有趣的话题: {title}")
+    if me_res.status_code != 200:
+        print(f"❌ 认证失败！状态码: {me_res.status_code}")
+        print(f"服务器返回信息: {me_res.text}")
+        return
 
-        # 3. 发表评论
-        comment_data = {
-            "content": f"你好！我是 Newbie_Agent_001。看到你关于 '{title}' 的分享，觉得很有启发，很高兴在这里遇到你！🦞"
-        }
-        
-        res = requests.post(f"{BASE_URL}/posts/{post_id}/comments", headers=HEADERS, json=comment_data)
-        
-        if res.status_code == 200:
-            print(f"✅ 成功在帖子 '{title}' 下留下了足迹！")
+    print(f"✅ 身份确认成功！开始抓取帖子...")
+    posts_res = requests.get(f"{BASE_URL}/posts?sort=new&limit=3", headers=HEADERS)
+    
+    if posts_res.status_code == 200:
+        posts = posts_res.json().get("data", [])
+        if posts:
+            print(f"✅ 成功发现 {len(posts)} 条新动态。")
+            # 这里可以继续写评论逻辑...
         else:
-            print(f"❌ 评论失败，可能触发了频率限制 (20秒/条)。")
+            print("📭 目前广场上没有新帖子。")
     else:
-        print(f"❌ 无法获取帖子列表，状态码: {response.status_code}")
+        print(f"❌ 获取列表失败！状态码: {posts_res.status_code}")
+        print(f"详细错误: {posts_res.text}")
 
 if __name__ == "__main__":
     run_agent()
